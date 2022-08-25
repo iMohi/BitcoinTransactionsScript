@@ -27,11 +27,13 @@ def getAddressTransactions(walletadd):
     getTransDetails = url.json()["data"]["list"]
 
     totalResult = []
+    inputAddressList = []
+    outputAddressList = []
 
     #Check for all transaction
     for tnum, content in enumerate(getTransDetails):
 
-        print(getTransDetails[tnum])
+        #print(json.dumps(getTransDetails[tnum], indent=4))
         txHash = getTransDetails[tnum]["hash"]
         txTime = datetime.fromtimestamp(int(getTransDetails[tnum]["block_time"]))
         inputsCount = getTransDetails[tnum]["inputs_count"]
@@ -40,20 +42,25 @@ def getAddressTransactions(walletadd):
         outputValue = float(getTransDetails[tnum]["outputs_value"]) * float(satoshi)
         coinbase = getTransDetails[tnum]["is_coinbase"]
         fees = inputsValue - outputValue
-        inputsList = []
+
 
         if inputsCount == 1:
             fromAddress = getTransDetails[tnum]["inputs"][0]["prev_addresses"]
-            inputsList.append(fromAddress)
             if fromAddress != walletadd:
                 transType = "Received"
             else:
                 transType = "Sent"
         else:
-            fromAddress = getTransDetails[tnum]["inputs"][0]
-            for address in fromAddress["prev_addresses"]:
+            fromAddress = getTransDetails[tnum]["inputs"]
+            transType = "Received"
+            for i in range(inputsCount):
+                #print(fromAddress[i]["prev_addresses"][0]," is eq ", str(walletadd))
+                #print(fromAddress[i]["prev_value"])
                 transType = "Received"
-                if address == str(walletadd):
+
+           # for address in fromAddress["prev_addresses"]:
+            #    print(address, "thjisss")
+                if str(fromAddress[i]["prev_addresses"][0]) == str(walletadd):
                     transType = "Sent"
                     break
 
@@ -62,19 +69,47 @@ def getAddressTransactions(walletadd):
         else:
             exchange = "Unknown"
 
-        layout = {
-            "Address": walletadd,
-            "Transaction_Hash": txHash,
-            "Date_and_Time": str(txTime),
-            "Transaction_Type": transType,
-            "Input_Count": inputsCount,
-            "Output_Count": outputsCount,
-            "Input_Value" : inputsValue,
-            "Output_Value": outputValue,
-            "Exchange": exchange,
-        }
+        if transType == "Sent":
+            outputAddress = getTransDetails[tnum]["outputs"]
+            outputAddressList.clear()
+            for index, outadd in enumerate(outputAddress):
+                outputAddressList.append({"address": outadd["addresses"][0],"Value": float(outadd["value"]) * float(satoshi) })
 
-        totalResult.append(layout)
+            layout = {
+                "Address": walletadd,
+                "Transaction_Hash": txHash,
+                "Date_and_Time": str(txTime),
+                "Transaction_Type": transType,
+                "Output_Address": outputAddressList,
+                "Input_Count": inputsCount,
+                "Output_Count": outputsCount,
+                "Input_Value": inputsValue,
+                "Output_Value": outputValue,
+                "Exchange": exchange,
+            }
+            totalResult.append(layout)
+
+        elif  transType == "Received":
+            inputAddress = getTransDetails[tnum]["inputs"]
+            inputAddressList.clear()
+            for index, inadd in enumerate(inputAddress):
+                inputAddressList.append({"Address": inadd["prev_addresses"][0], "Value": float(inadd["prev_value"]) * float(satoshi)})
+
+
+            layout = {
+                "Address": walletadd,
+                "Transaction_Hash": txHash,
+                "Date_and_Time": str(txTime),
+                "Transaction_Type": transType,
+                "Input_Address": inputAddressList,
+                "Input_Count": inputsCount,
+                "Output_Count": outputsCount,
+                "Input_Value": inputsValue,
+                "Output_Value": outputValue,
+                "Exchange": exchange,
+            }
+            totalResult.append(layout)
+
     return totalResult
 
 
