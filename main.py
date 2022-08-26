@@ -2,6 +2,12 @@
 import requests
 import json
 from datetime import datetime
+import math
+import pandas as pd
+import openpyxl
+import xlsxwriter
+import xlrd
+
 
 
 def getAddressInfo(walletadd):
@@ -22,8 +28,8 @@ def getAddressInfo(walletadd):
     }
     return layout
 
-def getAddressTransactions(walletadd):
-    url = requests.get(f"https://chain.api.btc.com/v3/address/{walletadd}/tx")
+def getAddressTransactions(walletadd,pagenum):
+    url = requests.get(f"https://chain.api.btc.com/v3/address/{walletadd}/tx?page={pagenum}")
     getTransDetails = url.json()["data"]["list"]
 
     totalResult = []
@@ -54,12 +60,7 @@ def getAddressTransactions(walletadd):
             fromAddress = getTransDetails[tnum]["inputs"]
             transType = "Received"
             for i in range(inputsCount):
-                #print(fromAddress[i]["prev_addresses"][0]," is eq ", str(walletadd))
-                #print(fromAddress[i]["prev_value"])
                 transType = "Received"
-
-           # for address in fromAddress["prev_addresses"]:
-            #    print(address, "thjisss")
                 if str(fromAddress[i]["prev_addresses"][0]) == str(walletadd):
                     transType = "Sent"
                     break
@@ -75,6 +76,8 @@ def getAddressTransactions(walletadd):
             for index, outadd in enumerate(outputAddress):
                 outputAddressList.append({"address": outadd["addresses"][0],"Value": float(outadd["value"]) * float(satoshi) })
 
+
+
             layout = {
                 "Address": walletadd,
                 "Transaction_Hash": txHash,
@@ -89,12 +92,19 @@ def getAddressTransactions(walletadd):
             }
             totalResult.append(layout)
 
-        elif  transType == "Received":
+        elif transType == "Received":
             inputAddress = getTransDetails[tnum]["inputs"]
+            outputAddress = getTransDetails[tnum]["outputs"]
             inputAddressList.clear()
+            #get the input addresses and its value
             for index, inadd in enumerate(inputAddress):
                 inputAddressList.append({"Address": inadd["prev_addresses"][0], "Value": float(inadd["prev_value"]) * float(satoshi)})
 
+            #get the amount received
+            for index, outadd in enumerate(outputAddress):
+                if str(walletadd) == str(outadd["addresses"][0]):
+                    amountReceived = float(outadd["value"]) * float(satoshi)
+                    break
 
             layout = {
                 "Address": walletadd,
@@ -106,19 +116,95 @@ def getAddressTransactions(walletadd):
                 "Output_Count": outputsCount,
                 "Input_Value": inputsValue,
                 "Output_Value": outputValue,
+                "Amount_Received": amountReceived,
                 "Exchange": exchange,
             }
             totalResult.append(layout)
 
     return totalResult
 
+def walletDataframe(totalList):
+    ransomWallet = []
+    waladdress = []
+    txHash = []
+    txType = []
+    inputAdd = []
+    outputAdd = []
+    amount = []
+    dateTime = []
+    ransomFam = []
+    source = []
+
+    for data in totalList:
+        #if transaction is from the sender get the senders wallet info
+        if data["Transaction_Type"] == "Received":
+            for num in range(data["Input_Count"]):
+                ransomWallet.append(data["Address"])
+                waladdress.append(data["Address"])
+                txHash.append(data["Transaction_Hash"])
+                txType.append(data["Transaction_Type"])
+                inputAdd.append(data["Input_Address"][num]["Address"])
+                outputAdd.append(data["Address"])
+                dateTime.append(data["Date_and_Time"])
+                ransomFam.append("Netwalker")
+                source.append("Facebook.com")
+
+
+        elif data["Transaction_Type"] == "Sent":
+            for num in range(data["Output_Count"]):
+                ransomWallet.append(data["Address"])
+                waladdress.append(data["Address"])
+                txHash.append(data["Transaction_Hash"])
+                txType.append(data["Transaction_Type"])
+                inputAdd.append(data["Address"])
+                outputAdd.append(data["Output_Address"][num]["address"])
+                dateTime.append(data["Date_and_Time"])
+                ransomFam.append("Netwalker")
+                source.append("Facebook.com")
+
+    layout = {"Ransomware related Address": ransomWallet,
+              "Wallet Address": waladdress,
+              "Transaction Hash": txHash,
+              "Transation Type": txType,
+              "Input Address": inputAdd,
+              "Output Address": outputAdd,
+              "Date and Time": dateTime,
+              "Ransomware Family": ransomFam,
+              "Source": source}
+
+    return layout
+
+#def convertToExcel(dataframe):
+
+
+
+
+whole = []
 
 #walletAddress = "12t9YDPgwueZ9NyMgw519p7AA8isjr6SMw"
 walletAddress = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
 satoshi = float(1.0) * float(10 ** -8)
 transactionId = "55cde36a456e5fa90d23e34a0c8d83a12e46e83a07f171f69057ba4dbaac48fe"
 
-print(json.dumps(getAddressTransactions(walletAddress), indent=4))
+
+#Request to get all of the transactions
+
+totaltrans = getAddressInfo(walletAddress)["Transactions"]
+
+if totaltrans > 10:
+    calc = math.ceil(totaltrans / 10)
+    for i in range(calc):
+        get = getAddressTransactions(walletAddress, i + 1)
+        whole.extend(get)
+    print(json.dumps(whole, indent=4))
+    print(len(whole))
+else:
+    whole.extend(getAddressTransactions(walletAddress, 1))
+    print(whole)
+
+print(json.dumps(walletDataframe(whole), indent=4))
+
+#print(json.dumps(getAddressTransactions(walletAddress), indent=4))
 #getAddress2 = requests.get(f"https://chain.api.btc.com/v3/address/{walletAddress}/tx?pagesize=10")
 #getTransactionInputOutput = requests.get(f"https://chain.api.btc.com/v3/tx/{transactionId}?verbose=3")
 
