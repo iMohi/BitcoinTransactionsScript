@@ -7,7 +7,7 @@ import pandas as pd
 import openpyxl
 import xlsxwriter
 import xlrd
-
+import os.path
 
 
 def getAddressInfo(walletadd):
@@ -28,13 +28,12 @@ def getAddressInfo(walletadd):
     }
     return layout
 
+#get transactions for the given wallet address
 def getAddressTransactions(walletadd,pagenum):
     url = requests.get(f"https://chain.api.btc.com/v3/address/{walletadd}/tx?page={pagenum}")
     getTransDetails = url.json()["data"]["list"]
 
     totalResult = []
-    inputAddressList = []
-    outputAddressList = []
 
     #Check for all transaction
     for tnum, content in enumerate(getTransDetails):
@@ -71,12 +70,11 @@ def getAddressTransactions(walletadd,pagenum):
             exchange = "Unknown"
 
         if transType == "Sent":
+            outputAddressList = []
             outputAddress = getTransDetails[tnum]["outputs"]
-            outputAddressList.clear()
+
             for index, outadd in enumerate(outputAddress):
                 outputAddressList.append({"address": outadd["addresses"][0],"Value": float(outadd["value"]) * float(satoshi) })
-
-
 
             layout = {
                 "Address": walletadd,
@@ -93,18 +91,21 @@ def getAddressTransactions(walletadd,pagenum):
             totalResult.append(layout)
 
         elif transType == "Received":
+            inputAddressList = []
             inputAddress = getTransDetails[tnum]["inputs"]
             outputAddress = getTransDetails[tnum]["outputs"]
-            inputAddressList.clear()
-            #get the input addresses and its value
-            for index, inadd in enumerate(inputAddress):
-                inputAddressList.append({"Address": inadd["prev_addresses"][0], "Value": float(inadd["prev_value"]) * float(satoshi)})
 
-            #get the amount received
+
+            # get the amount received
             for index, outadd in enumerate(outputAddress):
                 if str(walletadd) == str(outadd["addresses"][0]):
                     amountReceived = float(outadd["value"]) * float(satoshi)
                     break
+
+            #get the input addresses and its value
+            for index, inadd in enumerate(inputAddress):
+                inputAddressList.append({"Address": inadd["prev_addresses"][0],
+                                         "Value": float(inadd["prev_value"]) * float(satoshi)})
 
             layout = {
                 "Address": walletadd,
@@ -123,15 +124,19 @@ def getAddressTransactions(walletadd,pagenum):
 
     return totalResult
 
+
 def walletDataframe(totalList):
+    tier = []
     ransomWallet = []
     waladdress = []
     txHash = []
     txType = []
     inputAdd = []
+    inputAmount = []
     outputAdd = []
-    amount = []
+    outputAmount = []
     dateTime = []
+    relation = []
     ransomFam = []
     source = []
 
@@ -139,43 +144,80 @@ def walletDataframe(totalList):
         #if transaction is from the sender get the senders wallet info
         if data["Transaction_Type"] == "Received":
             for num in range(data["Input_Count"]):
+                tier.append("Base")
                 ransomWallet.append(data["Address"])
                 waladdress.append(data["Address"])
                 txHash.append(data["Transaction_Hash"])
                 txType.append(data["Transaction_Type"])
                 inputAdd.append(data["Input_Address"][num]["Address"])
+                inputAmount.append(data["Amount_Received"])
                 outputAdd.append(data["Address"])
+                outputAmount.append(data["Input_Value"])
                 dateTime.append(data["Date_and_Time"])
+                relation.append(data["Address"])
                 ransomFam.append("Netwalker")
-                source.append("Facebook.com")
+                source.append("https://zenodo.org/record/6512123#.YwXH0XZBy5d")
+                print(data)
 
 
         elif data["Transaction_Type"] == "Sent":
             for num in range(data["Output_Count"]):
+                tier.append("Base")
                 ransomWallet.append(data["Address"])
                 waladdress.append(data["Address"])
                 txHash.append(data["Transaction_Hash"])
                 txType.append(data["Transaction_Type"])
                 inputAdd.append(data["Address"])
+                inputAmount.append(data["Input_Value"])
                 outputAdd.append(data["Output_Address"][num]["address"])
+                outputAmount.append(data["Output_Address"][num]["Value"])
                 dateTime.append(data["Date_and_Time"])
+                relation.append(data["Address"])
                 ransomFam.append("Netwalker")
-                source.append("Facebook.com")
+                source.append("https://zenodo.org/record/6512123#.YwXH0XZBy5d")
 
-    layout = {"Ransomware related Address": ransomWallet,
+    layout = {"Tier (I,II, III, IV)": tier,
+              "Ransomware related Address": ransomWallet,
               "Wallet Address": waladdress,
               "Transaction Hash": txHash,
               "Transation Type": txType,
-              "Input Address": inputAdd,
-              "Output Address": outputAdd,
+              "Senders Address": inputAdd,
+              "Sent Amount(BTC)": inputAmount,
+              "Receivers Address": outputAdd,
+              "Received Amount(BTC)": outputAmount,
               "Date and Time": dateTime,
+              "Relationship Address": relation,
               "Ransomware Family": ransomFam,
               "Source": source}
 
     return layout
 
-#def convertToExcel(dataframe):
+def convertToExcel(dataframe):
+    if os.path.exists("Ransomware_Dataset.xlsx"):
+        print("it exist")
+        df = pd.DataFrame(dataframe)
+        with pd.ExcelWriter("Ransomware_Dataset.xlsx", mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
+            df.to_excel(writer, sheet_name="Wallet Address", header=None, startrow=writer.sheets["Wallet Address"].max_row, index=False)
+    else:
+        print("Converted Successfully")
+        df = pd.DataFrame(dataframe)
+        writer = pd.ExcelWriter("Ransomware_Dataset.xlsx", engine="xlsxwriter")
+        df.to_excel(writer, sheet_name="Wallet Address", index=False)
+        writer.save()
 
+
+def tierRange(whole, tier):
+    wholeTier = []
+    inAddress = []
+    OutAddress = []
+    dictionary = {}
+
+    for data in whole:
+        if data["Transaction_Type"] == "Received":
+            for num in range(data["Input_Count"]):
+                dictionary["address"] = data["Input_Address"][num]["Address"]
+                dictionary["type"] = "Received"
+                OutAddress.append(dictionary)
 
 
 
@@ -196,13 +238,15 @@ if totaltrans > 10:
     for i in range(calc):
         get = getAddressTransactions(walletAddress, i + 1)
         whole.extend(get)
-    print(json.dumps(whole, indent=4))
-    print(len(whole))
+
 else:
     whole.extend(getAddressTransactions(walletAddress, 1))
-    print(whole)
 
-print(json.dumps(walletDataframe(whole), indent=4))
+print(json.dumps(whole, indent=4))
+
+#print(json.dumps(walletDataframe(whole), indent=4))
+
+#convertToExcel(walletDataframe(whole))
 
 #print(json.dumps(getAddressTransactions(walletAddress), indent=4))
 #getAddress2 = requests.get(f"https://chain.api.btc.com/v3/address/{walletAddress}/tx?pagesize=10")
