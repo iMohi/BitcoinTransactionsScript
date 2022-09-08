@@ -125,7 +125,7 @@ def getAddressTransactions(walletadd,pagenum):
     return totalResult
 
 
-def walletDataframe(totalList):
+def walletDataframe(totalList, tierLvl):
     tier = []
     ransomWallet = []
     waladdress = []
@@ -144,7 +144,7 @@ def walletDataframe(totalList):
         #if transaction is from the sender get the senders wallet info
         if data["Transaction_Type"] == "Received":
             for num in range(data["Input_Count"]):
-                tier.append("Base")
+                tier.append(tierLvl)
                 ransomWallet.append(data["Address"])
                 waladdress.append(data["Address"])
                 txHash.append(data["Transaction_Hash"])
@@ -155,14 +155,14 @@ def walletDataframe(totalList):
                 outputAmount.append(data["Input_Value"])
                 dateTime.append(data["Date_and_Time"])
                 relation.append(data["Address"])
-                ransomFam.append("Netwalker")
-                source.append("https://zenodo.org/record/6512123#.YwXH0XZBy5d")
+                ransomFam.append("WannaCry")
+                source.append("https://qz.com/982993/watch-as-these-bitcoin-wallets-receive-ransomware-payments-from-the-ongoing-cyberattack/")
                 print(data)
 
 
         elif data["Transaction_Type"] == "Sent":
             for num in range(data["Output_Count"]):
-                tier.append("Base")
+                tier.append(tierLvl)
                 ransomWallet.append(data["Address"])
                 waladdress.append(data["Address"])
                 txHash.append(data["Transaction_Hash"])
@@ -173,8 +173,8 @@ def walletDataframe(totalList):
                 outputAmount.append(data["Output_Address"][num]["Value"])
                 dateTime.append(data["Date_and_Time"])
                 relation.append(data["Address"])
-                ransomFam.append("Netwalker")
-                source.append("https://zenodo.org/record/6512123#.YwXH0XZBy5d")
+                ransomFam.append("WannaCry")
+                source.append("https://qz.com/982993/watch-as-these-bitcoin-wallets-receive-ransomware-payments-from-the-ongoing-cyberattack/")
 
     layout = {"Tier (I,II, III, IV)": tier,
               "Ransomware related Address": ransomWallet,
@@ -206,44 +206,58 @@ def convertToExcel(dataframe):
         writer.save()
 
 
+def calculateWholeTx(Wallet):
+    whole = []
+    # Request to get all of the transactions
+    totaltrans = getAddressInfo(walletAddress)["Transactions"]
+    if totaltrans > 10:
+        calc = math.ceil(totaltrans / 10)
+        for i in range(calc):
+            get = getAddressTransactions(walletAddress, i + 1)
+            whole.extend(get)
+    else:
+        whole.extend(getAddressTransactions(walletAddress, 1))
+    return whole
+
 def tierRange(whole, tier):
     wholeTier = []
-    inAddress = []
+    totalAddress = []
     OutAddress = []
-    dictionary = {}
-
-    for data in whole:
-        if data["Transaction_Type"] == "Received":
-            for num in range(data["Input_Count"]):
-                dictionary["address"] = data["Input_Address"][num]["Address"]
-                dictionary["type"] = "Received"
-                OutAddress.append(dictionary)
 
 
+    for i in range(tier):
+        totalAddress.clear()
+        tempInAddress = []
 
-whole = []
+        for data in whole:
+            #print(dictionary)
+            if data["Transaction_Type"] == "Received":
+                for num in range(data["Input_Count"]):
+                    dictionary = {}
+                    dictionary["address"] = data["Input_Address"][num]["Address"]
+                    dictionary["type"] = "Received"
+                    tempInAddress.append(dictionary)
+
+            if data["Transaction_Type"] == "Sent":
+                for num in range(data["Output_Count"]):
+                    dictionary = {}
+                    dictionary["address"] = data["Output_Address"][num]["address"]
+                    dictionary["type"] = "Sent"
+                    tempInAddress.append(dictionary)
+        totalAddress.extend(tempInAddress)
+
+    return totalAddress
 
 #walletAddress = "12t9YDPgwueZ9NyMgw519p7AA8isjr6SMw"
 walletAddress = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
 satoshi = float(1.0) * float(10 ** -8)
 transactionId = "55cde36a456e5fa90d23e34a0c8d83a12e46e83a07f171f69057ba4dbaac48fe"
 
+whole = calculateWholeTx(walletAddress)
 
-#Request to get all of the transactions
 
-totaltrans = getAddressInfo(walletAddress)["Transactions"]
-
-if totaltrans > 10:
-    calc = math.ceil(totaltrans / 10)
-    for i in range(calc):
-        get = getAddressTransactions(walletAddress, i + 1)
-        whole.extend(get)
-
-else:
-    whole.extend(getAddressTransactions(walletAddress, 1))
-
-print(json.dumps(whole, indent=4))
-
+#print(json.dumps(whole, indent=4))
+print(json.dumps(tierRange(whole, 1), indent=4))
 #print(json.dumps(walletDataframe(whole), indent=4))
 
 #convertToExcel(walletDataframe(whole))
