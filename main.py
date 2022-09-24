@@ -164,8 +164,8 @@ def walletDataframe(ransomWall, totalList, tierLvl, relationship):
                 outputAmount.append(data["Amount_Received"])
                 dateTime.append(data["Date_and_Time"])
                 relation.append(relationship)
-                ransomFam.append("WannaCry")
-                source.append("https://qz.com/982993/watch-as-these-bitcoin-wallets-receive-ransomware-payments-from-the-ongoing-cyberattack/")
+                ransomFam.append("NetWalker")
+                source.append("https://www.incibe-cert.es/en/blog/netwalker-ransomware-analysis-and-preventative-measures")
                 if tierLvl == "Base":
                     stats.append("Suspicious")
                 else:
@@ -184,8 +184,8 @@ def walletDataframe(ransomWall, totalList, tierLvl, relationship):
                 outputAmount.append(data["Output_Address"][num]["Value"])
                 dateTime.append(data["Date_and_Time"])
                 relation.append(relationship)
-                ransomFam.append("WannaCry")
-                source.append("https://qz.com/982993/watch-as-these-bitcoin-wallets-receive-ransomware-payments-from-the-ongoing-cyberattack/")
+                ransomFam.append("NetWalker")
+                source.append("https://www.incibe-cert.es/en/blog/netwalker-ransomware-analysis-and-preventative-measures")
                 if tierLvl == "Base":
                     stats.append("Suspicious")
                 else:
@@ -263,18 +263,30 @@ def tierRange(whole, tier):
         totalAddress.extend(tempInAddress)
     return totalAddress
 
-def tempInOut(whole):
+def tempInOut(whole, type):
     tempInAddress = []
-    for data in whole:
-        #print(dictionary)
-        if data["Transaction_Type"] == "Received":
-            for num in range(data["Input_Count"]):
-                tempInAddress.append(data["Input_Address"][num]["Address"])
+    dic = {}
+    transList = []
 
-        if data["Transaction_Type"] == "Sent":
-            for num in range(data["Output_Count"]):
-                tempInAddress.append(data["Output_Address"][num]["address"])
+    if type == "Sent":
+        for data in whole:
+            if data["Transaction_Type"] == "Sent":
+                for num in range(data["Output_Count"]):
+                    transList.append(data["Output_Address"][num]["address"])
+                    # tempInAddress.append(data["Output_Address"][num]["address"])
 
+    if type == "Received":
+        for data in whole:
+            if data["Transaction_Type"] == "Received":
+                for num in range(data["Input_Count"]):
+                    transList.append(data["Input_Address"][num]["Address"])
+                    #tempInAddress.append(data["Input_Address"][num]["Address"])
+
+
+
+    dic["MainAdd"] = whole[0]["Address"]
+    dic["Trans"] = transList
+    tempInAddress.append(dic)
     return tempInAddress
 
 
@@ -284,19 +296,78 @@ transactionId = "55cde36a456e5fa90d23e34a0c8d83a12e46e83a07f171f69057ba4dbaac48f
 #walletAddress = "12t9YDPgwueZ9NyMgw519p7AA8isjr6SMw"
 
 
+#************************************************************************************************************************************
 
-walletAddress = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
-address = "1DT3MuQrG7JY5hrMwtsEghukq6nBLHq6gr"
-relation = "1QH3sThphKLXqtyXDjNTR4ESJCwKBQSUAD"
-tier = "Tier Three"
+placeholder = {}
+transType = "Sent"
+
+if len(placeholder) == 0:
+    walletAddress = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
+    address = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
+    relation = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
+    tier = "Base"
 
 
-whole = calculateWholeTx(address)
-temporaryAdd = tempInOut(whole)
-dataframe = walletDataframe(walletAddress, whole, tier, relation)
-convertToExcel(dataframe)
-print(json.dumps(temporaryAdd, indent=4))
-print(len(temporaryAdd))
+    whole = calculateWholeTx(address)
+    temporaryAdd = tempInOut(whole, transType)
+    dataframe = walletDataframe(walletAddress, whole, tier, relation)
+    convertToExcel(dataframe)
+    print(json.dumps(temporaryAdd, indent=4))
+    print(len(temporaryAdd[0]["Trans"]))
+
+    placeholder["1"] = temporaryAdd[0]
+    print(placeholder)
+
+hit = 12
+add = 1
+while add != hit:
+    tierPicker = {"1": "Tier One",
+                  "2": "Tier Two",
+                  "3": "Tier Three",
+                  "4": "Tier Four",
+                  "5": "Tier Five",
+                  "6": "Tier Six",
+                  "7": "Tier Seven",
+                  "8": "Tier Eight",
+                  "9": "Tier Nine",
+                  "10": "Tier Ten"}
+    print("counter", add)
+    if int(len(placeholder[str(add)]["Trans"])) != 0:
+        print("Yes")
+
+        walletAddress = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
+        address = placeholder[str(add)]["Trans"][0]
+        relation = placeholder[str(add)]["MainAdd"]
+        tier = tierPicker[str(add)]
+
+        if walletAddress == address:
+            pass
+
+        temp = placeholder[str(add)]["Trans"]
+        temp.remove(address)
+        placeholder[str(add)]["Trans"] = temp
+
+
+        whole = calculateWholeTx(address)
+        print(f"Pass whole: {add}")
+        temporaryAdd = tempInOut(whole, transType)
+        print(f"Pass temporaryAdd: {add}")
+        dataframe = walletDataframe(walletAddress, whole, tier, relation)
+        print(f"Pass Dataframe: {add}")
+        convertToExcel(dataframe)
+        #print(json.dumps(temporaryAdd, indent=4))
+        #print(len(temporaryAdd[0]["Trans"]))
+
+        if getAddressInfo(address)["Transactions"] >= 50:
+            pass
+        else:
+            placeholder[str(add+1)] = temporaryAdd[0]
+
+        print(f"Address: {address} \n Relations: {relation} \n Tier: {tier}")
+        print(placeholder)
+
+    else:
+        add += 1
 
 
 
@@ -305,12 +376,8 @@ print(len(temporaryAdd))
 #convertToExcel(walletDataframe(whole, "Base"))
 
 
-
-
-
 #print(json.dumps(whole, indent=4))
 #print(json.dumps(walletDataframe(whole), indent=4))
-
 
 
 #print(json.dumps(getAddressTransactions(walletAddress), indent=4))
