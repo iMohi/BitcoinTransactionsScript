@@ -9,6 +9,7 @@ import xlsxwriter
 import xlrd
 import os.path
 import time
+import gui
 
 
 def getAddressInfo(walletadd):
@@ -133,7 +134,7 @@ def getAddressTransactions(walletadd,pagenum):
 
 
 
-def walletDataframe(ransomWall, totalList, tierLvl, relationship):
+def walletDataframe(ransomWall, totalList, tierLvl, relationship, ranFam, Src):
     tier = []
     ransomWallet = []
     waladdress = []
@@ -164,8 +165,8 @@ def walletDataframe(ransomWall, totalList, tierLvl, relationship):
                 outputAmount.append(data["Amount_Received"])
                 dateTime.append(data["Date_and_Time"])
                 relation.append(relationship)
-                ransomFam.append("NetWalker")
-                source.append("https://www.incibe-cert.es/en/blog/netwalker-ransomware-analysis-and-preventative-measures")
+                ransomFam.append(ranFam)
+                source.append(Src)
                 if tierLvl == "Base":
                     stats.append("Suspicious")
                 else:
@@ -184,8 +185,8 @@ def walletDataframe(ransomWall, totalList, tierLvl, relationship):
                 outputAmount.append(data["Output_Address"][num]["Value"])
                 dateTime.append(data["Date_and_Time"])
                 relation.append(relationship)
-                ransomFam.append("NetWalker")
-                source.append("https://www.incibe-cert.es/en/blog/netwalker-ransomware-analysis-and-preventative-measures")
+                ransomFam.append(ranFam)
+                source.append(Src)
                 if tierLvl == "Base":
                     stats.append("Suspicious")
                 else:
@@ -208,16 +209,16 @@ def walletDataframe(ransomWall, totalList, tierLvl, relationship):
 
     return layout
 
-def convertToExcel(dataframe):
-    if os.path.exists("Ransomware_Dataset.xlsx"):
+def convertToExcel(dataframe, loc):
+    if os.path.exists(loc + "/Ransomware_Dataset.xlsx"):
         print("it exist")
         df = pd.DataFrame(dataframe)
-        with pd.ExcelWriter("Ransomware_Dataset.xlsx", mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
+        with pd.ExcelWriter(loc + "/Ransomware_Dataset.xlsx", mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
             df.to_excel(writer, sheet_name="Wallet Address", header=None, startrow=writer.sheets["Wallet Address"].max_row, index=False)
     else:
         print("Converted Successfully")
         df = pd.DataFrame(dataframe)
-        writer = pd.ExcelWriter("Ransomware_Dataset.xlsx", engine="xlsxwriter")
+        writer = pd.ExcelWriter(loc + "/Ransomware_Dataset.xlsx", engine="xlsxwriter")
         df.to_excel(writer, sheet_name="Wallet Address", index=False)
         writer.save()
 
@@ -292,97 +293,100 @@ def tempInOut(whole, type):
 
 
 satoshi = float(1.0) * float(10 ** -8)
-transactionId = "55cde36a456e5fa90d23e34a0c8d83a12e46e83a07f171f69057ba4dbaac48fe"
-#walletAddress = "12t9YDPgwueZ9NyMgw519p7AA8isjr6SMw"
 
 
 #************************************************************************************************************************************
 
-placeholder = {}
-transType = "Sent"
+def initialised(wallet, fam, source, type, tiers, loca):
+    print("Initial called")
+    placeholder = {}
+    gui.App.message = "Ransomware Payment Dataset Gen"
+    #wall = "1HZHhdJ6VdwBLCFhdu7kDVZN9pb3BWeUED"
+    #transType = "Sent"
+    #ransomfam = "Qlocker"
+    #src = "https://www.pcrisk.com/removal-guides/20704-qlocker-ransomware"
+    #loc = "C:/"
+    #tr = 9
 
-if len(placeholder) == 0:
-    walletAddress = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
-    address = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
-    relation = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
-    tier = "Base"
+    #wall = wallet
+    #transType = type
+    #ransomfam = fam
+    #src = source
+    #loc = loca
+    #tr = tiers
 
-
-    whole = calculateWholeTx(address)
-    temporaryAdd = tempInOut(whole, transType)
-    dataframe = walletDataframe(walletAddress, whole, tier, relation)
-    convertToExcel(dataframe)
-    print(json.dumps(temporaryAdd, indent=4))
-    print(len(temporaryAdd[0]["Trans"]))
-
-    placeholder["1"] = temporaryAdd[0]
-    print(placeholder)
-
-hit = 12
-add = 1
-while add != hit:
-    tierPicker = {"1": "Tier One",
-                  "2": "Tier Two",
-                  "3": "Tier Three",
-                  "4": "Tier Four",
-                  "5": "Tier Five",
-                  "6": "Tier Six",
-                  "7": "Tier Seven",
-                  "8": "Tier Eight",
-                  "9": "Tier Nine",
-                  "10": "Tier Ten"}
-    print("counter", add)
-    if int(len(placeholder[str(add)]["Trans"])) != 0:
-        print("Yes")
-
-        walletAddress = "17TMc2UkVRSga2yYvuxSD9Q1XyB2EPRjTF"
-        address = placeholder[str(add)]["Trans"][0]
-        relation = placeholder[str(add)]["MainAdd"]
-        tier = tierPicker[str(add)]
-
-        if walletAddress == address:
-            pass
-
-        temp = placeholder[str(add)]["Trans"]
-        temp.remove(address)
-        placeholder[str(add)]["Trans"] = temp
+    if len(placeholder) == 0:
+        walletAddress = wall
+        address = wall
+        relation = wall
+        tier = "Base"
 
 
         whole = calculateWholeTx(address)
-        print(f"Pass whole: {add}")
         temporaryAdd = tempInOut(whole, transType)
-        print(f"Pass temporaryAdd: {add}")
-        dataframe = walletDataframe(walletAddress, whole, tier, relation)
-        print(f"Pass Dataframe: {add}")
-        convertToExcel(dataframe)
+        dataframe = walletDataframe(walletAddress, whole, tier, relation, ransomfam, src)
+        convertToExcel(dataframe, loc)
         #print(json.dumps(temporaryAdd, indent=4))
         #print(len(temporaryAdd[0]["Trans"]))
 
-        if getAddressInfo(address)["Transactions"] >= 50:
-            pass
-        else:
-            placeholder[str(add+1)] = temporaryAdd[0]
-
-        print(f"Address: {address} \n Relations: {relation} \n Tier: {tier}")
+        placeholder["1"] = temporaryAdd[0]
         print(placeholder)
 
-    else:
-        add += 1
 
 
+    hit = tr
+    add = 1
+    while add != hit:
+        tierPicker = {"1": "Tier One",
+                      "2": "Tier Two",
+                      "3": "Tier Three",
+                      "4": "Tier Four",
+                      "5": "Tier Five",
+                      "6": "Tier Six",
+                      "7": "Tier Seven",
+                      "8": "Tier Eight",
+                      "9": "Tier Nine",
+                      "10": "Tier Ten"}
+        print("counter", add)
+        gui.app.progressUpdate("counter" + str(add))
+        if int(len(placeholder[str(add)]["Trans"])) != 0:
+            print("Yes")
 
-#whole = calculateWholeTx(walletAddress)
-#temporaryAdd = tempInOut(whole)
-#convertToExcel(walletDataframe(whole, "Base"))
+            walletAddress = wall
+            address = placeholder[str(add)]["Trans"][0]
+            relation = placeholder[str(add)]["MainAdd"]
+            tier = tierPicker[str(add)]
+
+            if walletAddress == address:
+                pass
+
+            temp = placeholder[str(add)]["Trans"]
+            temp.remove(address)
+            placeholder[str(add)]["Trans"] = temp
 
 
-#print(json.dumps(whole, indent=4))
-#print(json.dumps(walletDataframe(whole), indent=4))
+            whole = calculateWholeTx(address)
+            print(f"Pass whole: {add}")
+            temporaryAdd = tempInOut(whole, transType)
+            print(f"Pass temporaryAdd: {add}")
+            dataframe = walletDataframe(walletAddress, whole, tier, relation, ransomfam, src)
+            print(f"Pass Dataframe: {add}")
+            gui.app.progressUpdate(f"Writing Data for Tier" + str(add))
+            print("************************WRITING DATA*********************************")
+            convertToExcel(dataframe, loc)
+            print("************************WRITING FINISHED*********************************")
+            gui.app.progressUpdate(f"Writing Finished for Tier" + str(add))
+            #print(json.dumps(temporaryAdd, indent=4))
+            #print(len(temporaryAdd[0]["Trans"]))
 
+            if getAddressInfo(address)["Transactions"] >= 50:
+                pass
+            else:
+                placeholder[str(add+1)] = temporaryAdd[0]
 
-#print(json.dumps(getAddressTransactions(walletAddress), indent=4))
-#getAddress2 = requests.get(f"https://chain.api.btc.com/v3/address/{walletAddress}/tx?pagesize=10")
-#getTransactionInputOutput = requests.get(f"https://chain.api.btc.com/v3/tx/{transactionId}?verbose=3")
+            print(f"Address: {address} \n Relations: {relation} \n Tier: {tier}")
+            print(placeholder)
 
-#print(json.dumps(getTransactionInputOutput.json(), indent=4 ))
-#print(json.dumps(getAddress2.json(), indent=4))
+        else:
+            add += 1
+
