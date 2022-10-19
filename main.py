@@ -11,16 +11,17 @@ import os.path
 import time
 import gui
 
-
+#This function gets all the wallet address information. eg. How much bitcoin is being sent or recieved, transactions, etc
 def getAddressInfo(walletadd):
-    url = requests.get(f"https://chain.api.btc.com/v3/address/{walletadd}")
-    getAddDetails = url.json()["data"]
-    address = getAddDetails["address"]
-    received = float(getAddDetails["received"]) * float(satoshi)
-    sent = float(getAddDetails["sent"]) * float(satoshi)
-    balance = float(getAddDetails["balance"]) * float(satoshi)
-    txCount = getAddDetails["tx_count"]
+    url = requests.get(f"https://chain.api.btc.com/v3/address/{walletadd}") #Get request to extract data from chain.api.btc.com
+    getAddDetails = url.json()["data"] #convert data into json format and store into getAddDetails
+    address = getAddDetails["address"] #select the value of "address" key
+    received = float(getAddDetails["received"]) * float(satoshi) #select the value of "received" and convert it to nearest whole number
+    sent = float(getAddDetails["sent"]) * float(satoshi) #select the value of "sent" and convert it to nearest whole number
+    balance = float(getAddDetails["balance"]) * float(satoshi) #select the value of "balance" and convert it to nearest whole number
+    txCount = getAddDetails["tx_count"] #select the value of "received" to check the all transaction count
 
+    #Laying out necessary information
     layout = {
         "Address": address,
         "Total_Received": received,
@@ -30,17 +31,16 @@ def getAddressInfo(walletadd):
     }
     return layout
 
-#get transactions for the given wallet address
+#get transactions for the given wallet address. eg. just the particular wallet address
 def getAddressTransactions(walletadd,pagenum):
-    url = requests.get(f"https://chain.api.btc.com/v3/address/{walletadd}/tx?page={pagenum}")
-    getTransDetails = url.json()["data"]["list"]
+    url = requests.get(f"https://chain.api.btc.com/v3/address/{walletadd}/tx?page={pagenum}") #Get request to extract data from chain.api.btc.com
+    getTransDetails = url.json()["data"]["list"]  # Convert the data into readable json
 
-    totalResult = []
+    totalResult = [] # List all the items in layout filter all the stuffs that is needed and store in this array
 
-    #Check for all transaction
+    #Loop to Check for all transaction
     for tnum, content in enumerate(getTransDetails):
-
-        #print(json.dumps(getTransDetails[tnum], indent=4))
+        #set variables for each value that has been extracted from the Json list
         txHash = getTransDetails[tnum]["hash"]
         txTime = datetime.fromtimestamp(int(getTransDetails[tnum]["block_time"]))
         inputsCount = getTransDetails[tnum]["inputs_count"]
@@ -56,8 +56,10 @@ def getAddressTransactions(walletadd,pagenum):
         else:
             stats = "Normal"
 
+        #if input count only contains 1 wallet address then run this block
         if inputsCount == 1:
             fromAddress = getTransDetails[tnum]["inputs"][0]["prev_addresses"]
+            #if the current input address matches with the walletadd variable then flag the transtype to be Recieved or else flag as sent
             if fromAddress[0] != walletadd:
                 transType = "Received"
             else:
@@ -70,18 +72,19 @@ def getAddressTransactions(walletadd,pagenum):
                 if str(fromAddress[i]["prev_addresses"][0]) == str(walletadd):
                     transType = "Sent"
                     break
-
+        #if the walletadd variable belongs to coinbase exchange then create a variable which has a value of "Coinbase" or else store the value as "Unknown"
         if coinbase == "true":
             exchange = "Coinbase"
         else:
             exchange = "Unknown"
-        if transType == "Sent":
+        if transType == "Sent": #If the transaction type value is "Sent" then get the details of the output value and store in outputAddressList
             outputAddressList = []
             outputAddress = getTransDetails[tnum]["outputs"]
 
             for index, outadd in enumerate(outputAddress):
                 outputAddressList.append({"address": outadd["addresses"][0],"Value": float(outadd["value"]) * float(satoshi) })
 
+            #create a layout to make the data readable and easy to manipulate
             layout = {
                 "Address": walletadd,
                 "Transaction_Hash": txHash,
@@ -97,7 +100,7 @@ def getAddressTransactions(walletadd,pagenum):
             }
             totalResult.append(layout)
 
-        elif transType == "Received":
+        elif transType == "Received": #If the transaction type value is "Received" then get the details of the Input value and store in inputAddressList
             inputAddressList = []
             inputAddress = getTransDetails[tnum]["inputs"]
             outputAddress = getTransDetails[tnum]["outputs"]
@@ -231,6 +234,7 @@ def calculateWholeTx(wallet):
         for i in range(calc):
             get = getAddressTransactions(wallet, i + 1)
             wholeCalc.extend(get)
+            print(f"Get all transaction in page {i}")
     else:
         wholeCalc.extend(getAddressTransactions(wallet, 1))
     return wholeCalc
@@ -297,23 +301,18 @@ satoshi = float(1.0) * float(10 ** -8)
 
 #************************************************************************************************************************************
 
+#this function is to test the code and can be runnable
 def initialised(wallet, fam, source, type, tiers, loca):
     print("Initial called")
     placeholder = {}
     gui.App.message = "Ransomware Payment Dataset Gen"
-    #wall = "1HZHhdJ6VdwBLCFhdu7kDVZN9pb3BWeUED"
-    #transType = "Sent"
-    #ransomfam = "Qlocker"
-    #src = "https://www.pcrisk.com/removal-guides/20704-qlocker-ransomware"
-    #loc = "C:/"
-    #tr = 9
+    wall = "1HZHhdJ6VdwBLCFhdu7kDVZN9pb3BWeUED"
+    transType = "Sent"
+    ransomfam = "Qlocker"
+    src = "https://www.pcrisk.com/removal-guides/20704-qlocker-ransomware"
+    loc = "C:/"
+    tr = 9
 
-    #wall = wallet
-    #transType = type
-    #ransomfam = fam
-    #src = source
-    #loc = loca
-    #tr = tiers
 
     if len(placeholder) == 0:
         walletAddress = wall

@@ -1,3 +1,4 @@
+# This module is mostly for the design of the GUI interface for user friendly usage
 import threading
 import tkinter
 import tkinter.messagebox
@@ -270,6 +271,7 @@ class App(customtkinter.CTk):
         self.label_info_1.configure(text=f"*******************************\n" +
                                          f"Fill the form again to add into excel \n" +
                                          "*******************************")
+        print("Finished fill the form again...")
 
     def transtype_mode(self, trans):
         print(trans)
