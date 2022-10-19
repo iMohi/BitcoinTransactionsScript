@@ -115,7 +115,7 @@ def getAddressTransactions(walletadd,pagenum):
                 if str(walletadd) == str(outadd["addresses"][0]):
                     amountReceived = float(outadd["value"]) * float(satoshi)
                     break
-
+            #Layout and filter the data into readable format
             layout = {
                 "Address": walletadd,
                 "Transaction_Hash": txHash,
@@ -136,8 +136,9 @@ def getAddressTransactions(walletadd,pagenum):
     return totalResult
 
 
-
+# This converts the data into a list so in can be written in excel. Basically a data manipulation
 def walletDataframe(ransomWall, totalList, tierLvl, relationship, ranFam, Src):
+    #set an empty lists based on their data name
     tier = []
     ransomWallet = []
     waladdress = []
@@ -210,8 +211,9 @@ def walletDataframe(ransomWall, totalList, tierLvl, relationship, ranFam, Src):
               "Source": source,
               "Transaction Flag": stats}
 
-    return layout
+    return layout # return the layout data to be written
 
+#this function writes tha data that has been stored on Walletdatafram function onto excel
 def convertToExcel(dataframe, loc):
     if os.path.exists(loc + "/Ransomware_Dataset.xlsx"):
         print("it exist")
@@ -225,8 +227,8 @@ def convertToExcel(dataframe, loc):
         df.to_excel(writer, sheet_name="Wallet Address", index=False)
         writer.save()
 
-def calculateWholeTx(wallet):
-    wholeCalc = []
+def calculateWholeTx(wallet): #gets all the transaction in wallet
+    wholeCalc = [] #set an empty list to temporarily store the layouted transaction
     # Request to get all of the transactions
     totaltrans = getAddressInfo(wallet)["Transactions"]
     if totaltrans > 10:
